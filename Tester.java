@@ -1,38 +1,9 @@
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Scanner;
+import java.time.Duration;
 
-/*
- * Assumptions:
- * 1. I work only on the weekends (Delivery bonus is 4 instead of 3)
- */
-public class WageCalc {
-    public static void main(String[] args) { 
-        Scanner scan = new Scanner(System.in);
-        System.out.println("Enter 1 to calc shift's pay");
-        System.out.println("Enter 2 to calc next paycheck");
-        System.out.println("Enter 0 to exit");
-        int decision = scan.nextInt();
-        while (decision != 0) {
-            switch (decision) {
-                //get shift's pay (and put in the DATABASE)
-                case 1:
-                    System.out.println(registerShift());
-                    break;
-                case 2:
-                    //calcPaycheck()  Calculate next paycheck
-                    break;    
-
-
-            }
-            System.out.println("Enter your next decision");
-            decision = scan.nextInt();
-        }
-
-        scan.close();           
-    }
-    //result is first part the hourly total pay and second part is delivery bonus sum
-    public static double registerShift() {
+public class Tester {
+    public static void main(String[] args) {
         double totalPay = 0;
         double regPayPerMinute = 29.12 / 60;
         final double SATURDAY_WAGE_MODIFIER = 1.5;
@@ -63,7 +34,9 @@ public class WageCalc {
         totalPay += deliveriesNum * 4;
 
         scan.close();
-        return totalPay;
-    }
- 
-}  
+        System.out.println(totalPay);
+        
+        
+    }    
+}
+//2022-06-03T17:35:01 -> 2022-06-03T22:51:11 14
