@@ -1,3 +1,5 @@
+import java.io.FileWriter;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Scanner;
@@ -45,9 +47,12 @@ public class WageCalc {
         String endingTime = scan.nextLine();
         LocalDateTime shiftEnd = LocalDateTime.parse(endingTime);
         
-        //Calculates how much money is made before entering saturday hours
+        //Sets up a 18:00 object to make calculations with
         String untilSixHelper = startingTime.substring(0, 10) + "T18:00:00";
         LocalDateTime six = LocalDateTime.parse(untilSixHelper);
+        
+        //if () A morning or evening shift fork!
+
         Duration firstDuration = Duration.between(shiftStart,six);
         int minutesUntilSix = (int)(firstDuration.toMinutes());
         totalPay += minutesUntilSix * regPayPerMinute;
@@ -63,6 +68,9 @@ public class WageCalc {
         totalPay += deliveriesNum * 4;
 
         scan.close();
+
+
+
         return totalPay;
     }
  
