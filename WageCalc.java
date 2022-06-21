@@ -10,16 +10,19 @@ import java.util.Scanner;
  * 2.no other bonuses
  */
 public class WageCalc {
-    final int FRIDAY = 5;
-    final int SATURDAY = 6;
+    final static int FRIDAY = 5;
+    final static int SATURDAY = 6;
     final static double  SATURDAY_WAGE_MODIFIER = 1.5;
+    final static String SATURDAY_TIME = "T18:00:00";
     public static void main(String[] args) { 
         Scanner scan = new Scanner(System.in);
-        System.out.println("Enter 1 to enter a shift to the database");
-        System.out.println("Enter 2 to calc a specific shift's pay");
-        System.out.println("Enter 0 to exit");
-        int decision = scan.nextInt();
+        int decision = 99;
         while (decision != 0) {
+            System.out.println("Enter 1 to enter a shift to the database");
+            System.out.println("Enter 2 to calc a specific shift's pay");
+            System.out.println("Enter 3 to test");
+            System.out.println("Enter 0 to exit");
+            decision = scan.nextInt();
             switch (decision) {
                 //
                 case 0:
@@ -31,15 +34,16 @@ public class WageCalc {
                 case 2:
                     System.out.println(calculateShift());
                     break;
+                case 3:
+                    System.out.println("Case 3");
+                    break;    
                 default:
                     System.out.println("Please re-enter a valid choice");
 
             }
-            System.out.println("Enter your next decision");
-            decision = scan.nextInt();
+            
         }
-
-        scan.close();           
+        scan.close();   
     }
 
     //result is first part the hourly total pay and second part is delivery bonus sum
@@ -60,14 +64,14 @@ public class WageCalc {
         LocalDateTime shiftEnd = LocalDateTime.parse(endingTime);
         
         //Sets up a 18:00 object to make calculations with
-        String untilSixHelper = startingTime.substring(0, 10) + "T18:00:00";
+        String untilSixHelper = startingTime.substring(0, 10) + SATURDAY_TIME;
         LocalDateTime six = LocalDateTime.parse(untilSixHelper);
 
         System.out.println("Please enter the num of deliveries done");
         int deliveriesNum = scan.nextInt();
         
         //friday - calculates regular pay until saturday modifier turns on 6
-        if (shiftStart.getDayOfWeek().getValue() == 5) {
+        if (shiftStart.getDayOfWeek().getValue() == FRIDAY) {
             Duration fridayFirstDuration = Duration.between(shiftStart,six);
             double minutesUntilSix = (double)(fridayFirstDuration.toMinutes());
             totalPay += minutesUntilSix * regPayPerMinute;
@@ -78,7 +82,7 @@ public class WageCalc {
 
         }
         //saturday - hourly starts with modifier and the modifier ends on 6
-        else if (shiftStart.getDayOfWeek().getValue() == 6) {
+        else if (shiftStart.getDayOfWeek().getValue() == SATURDAY) {
             Duration saturdayFirstDuration = Duration.between(shiftStart,six);
             double minutesUntilSix = (double)(saturdayFirstDuration.toMinutes());
             totalPay += minutesUntilSix * regPayPerMinute * SATURDAY_WAGE_MODIFIER;
@@ -105,6 +109,7 @@ public class WageCalc {
         String endingTime = scan.nextLine();
         System.out.println("Please enter the num of deliveries done");
         int deliveriesNum = scan.nextInt();
+        scan.nextLine();
         
         try {
             FileWriter log = new FileWriter("./logs/log1.txt",true);
