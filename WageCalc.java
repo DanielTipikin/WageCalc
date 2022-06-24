@@ -7,22 +7,16 @@ import java.util.Scanner;
 
 /* @Very basic & personal wage calculater to get some experience before the big projects!
  * Assumptions:
- * 1.no overtime
- * 2.no other bonuses
- * 
+ * 1a.Overtime- Unknown if the person works 5 or 6 days a week nor nightshifts only, Also special job that's not overpaid
+ * 1b.Overtime- Holidays are not calculated in
  */
 public class WageCalc {
-    final static int FRIDAY = 5;
-    final static int SATURDAY = 6;
-    final static double  SATURDAY_WAGE_MODIFIER = 1.5;
-    final static String SATURDAY_TIME = "T18:00:00";
     public static void main(String[] args) { 
         Scanner scan = new Scanner(System.in);
-        int decision = 99;
+        int decision = -1;
         while (decision != 0) {
             System.out.println("Enter 1 to enter a shift to the database");
-            System.out.println("Enter 2 to calc a specific shift's pay");
-            System.out.println("Enter 3 to calc a specific month's wage");
+            System.out.println("Enter 2 to calc a specific month's wage");
             System.out.println("Enter 0 to exit");
             decision = scan.nextInt();
             scan.nextLine();
@@ -34,54 +28,61 @@ public class WageCalc {
                     appendShift();
                     break;
                 case 2:
-                    //System.out.println(calculateShift());
-                    break;
-                case 3:
                     System.out.println("Which month would you like to calc? (Enter Y-M in the format of: 2022-06");
                     String month = scan.nextLine();
                     System.out.println("The total for " + month +"  is: " + calcMonthlyWage(month));
                     break;    
                 default:
                     System.out.println("Please re-enter a valid choice");
-
             }
-            
         }
         scan.close();   
     }
 
     //result is first part the hourly total pay and second part is delivery bonus sum
     private static double calculateShift(LocalDateTime[] data) {
-        double minutesInShift = 0; //for overtime in the future
+        final  int FRIDAY = 5;
+        final  int SATURDAY = 6;
+        final  double  SATURDAY_WAGE_MODIFIER = 1.5;
+        
+        final int BEFORE_OVERTIME = 8 * 60;
+        final int FIRST_OVERTIME = 2 * 60; // first 2 hours of overtime
+        double wageModifier = 1;
+
+        double minutesInShift = 0;
+        double hoursInShift = 0;
         double totalPay = 0;
-        double regPayPerMinute = 29.12 / 60;
+        double regPayPerHour = 29.12;
+        double regPayPerMinute = regPayPerHour / 60;
         int regDelivery = 3;
         int deliveryInWeekend = 4;
 
         LocalDateTime shiftStart = data[0];
-
         LocalDateTime shiftEnd = data[1];
-        
+        int deliveriesNum = data[2].getMinute();
+
         //Sets up a 18:00 object to make calculations with
         int year = shiftStart.getYear();
         int month = shiftStart.getMonthValue();
         int day = shiftStart.getDayOfMonth();
         LocalDateTime six = LocalDateTime.of(year ,month ,day ,18 ,0 ,0);
 
-        int deliveriesNum = data[2].getMinute();
-
-        //friday - calculates regular pay until saturday modifier turns on 6
         if (shiftStart.getDayOfWeek().getValue() == FRIDAY) {
             Duration fridayFirstDuration = Duration.between(shiftStart,six);
             double minutesUntilSix = (double)(fridayFirstDuration.toMinutes());
+            minutesInShift += minutesUntilSix;
             totalPay += minutesUntilSix * regPayPerMinute;
-            Duration fridaySecondDuration = Duration.between(six,shiftEnd);
-            double minutesFromSix = (double)(fridaySecondDuration.toMinutes());
-            totalPay += minutesFromSix * regPayPerMinute * SATURDAY_WAGE_MODIFIER;
-            totalPay += deliveriesNum * deliveryInWeekend;
 
+            Duration fridaySecondDuration = Duration.between(six,shiftEnd);
+            double minutesPastSix = (double)(fridaySecondDuration.toMinutes());
+            minutesInShift += minutesPastSix;
+
+            //totalPay += minutesPastSix * regPayPerMinute * SATURDAY_WAGE_MODIFIER;
+            totalPay += deliveriesNum * deliveryInWeekend;
+            if (minutesInShift > BEFORE_OVERTIME) {
+
+            }
         }
-        //saturday - hourly starts with modifier and the modifier ends on 6
         else if (shiftStart.getDayOfWeek().getValue() == SATURDAY) {
             Duration saturdayFirstDuration = Duration.between(shiftStart,six);
             double minutesUntilSix = (double)(saturdayFirstDuration.toMinutes());
@@ -94,10 +95,24 @@ public class WageCalc {
         else {
             Duration shiftDuration = Duration.between(shiftStart,shiftEnd);
             double shiftMinutes = (double)(shiftDuration.toMinutes()); 
+            if (shiftMinutes > BEFORE_OVERTIME) {
+                totalPay += 8 * regPayPerHour;
+                hoursInShift = 8;
+                shiftMinutes -= BEFORE_OVERTIME;
+                if (shiftMinutes > 120) {
+                    totalPay += FIRST_OVERTIME * regPayPerMinute * 1.25;
+                    shiftMinutes -= 120;
+                    totalPay += shiftMinutes * regPayPerMinute * 1.50;
+                }
+            else {
+                totalPay += shiftMinutes * regPayPerMinute * 1.25; 
+            } 
+
+            }
             totalPay += shiftMinutes * regPayPerMinute;
             totalPay += deliveriesNum * regDelivery;
         }
-        System.out.println("For shift: "+shiftStart.toString()+" -> "+ shiftEnd + " +"+ data[2].getMinute() +" totalling - "+ totalPay + "NIS");
+        System.out.println("For shift: "+shiftStart.toString()+" -> "+ shiftEnd.toString() + " +"+ data[2].getMinute() +" totalling - "+ totalPay + "NIS");
         return totalPay;
     }
     // assumes the right format is put
@@ -115,8 +130,8 @@ public class WageCalc {
             FileWriter log = new FileWriter("./logs/log1.txt",true);
             if (deliveriesNum > 9)
                 log.append(startingTime + "->" + endingTime + " +" + deliveriesNum + " Deliveries\n");
-            else //pads the deliveriesnum 1 to 01
-                log.append(startingTime + "->" + endingTime + " +" + "0"+ deliveriesNum + " Deliveries\n");
+            else //pads the deliveriesnum 7 to 07 when smaller than 10
+                log.append(startingTime + "->" + endingTime + " +0" +  deliveriesNum + " Deliveries\n");
             log.close();
         }
         catch (IOException e) {
@@ -130,7 +145,7 @@ public class WageCalc {
         LocalDateTime[] result = new LocalDateTime[3];
         LocalDateTime startingTime = LocalDateTime.parse(logLine.substring(0, 19));
         LocalDateTime endingTime = LocalDateTime.parse(logLine.substring(21, 40));
-        LocalDateTime deliveryHelper = LocalDateTime.parse("2100-10-10T20:" + logLine.substring(42,44) + ":00"); //minutes is num of deliveries!
+        LocalDateTime deliveryHelper = LocalDateTime.parse("2999-12-28T23:" + logLine.substring(42,44) + ":59"); //To pass the deliverynum out of the function
         result[0] = startingTime;
         result[1] = endingTime;
         result[2] = deliveryHelper;
@@ -139,21 +154,18 @@ public class WageCalc {
     private static double calcMonthlyWage(String monthToCalc) {
         double monthlyPay = 0;
         try {
-            Scanner scanner = new Scanner(new File("./logs/log1.txt"));
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine();
+            Scanner scan = new Scanner(new File("./logs/log1.txt"));
+            while (scan.hasNextLine()) {
+                String line = scan.nextLine();
                 if (line.contains(monthToCalc)) {
                     LocalDateTime[] data = new LocalDateTime[2];
                     data = parseFromLine(line);
                     monthlyPay += calculateShift(data);
-
                 }
-                
-
             }
         }
         catch (Exception e) {
-            System.out.println("Exception: " + e);
+            e.printStackTrace();
         } 
         return monthlyPay;
     }
