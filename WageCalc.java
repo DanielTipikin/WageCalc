@@ -5,10 +5,11 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Scanner;
 
-/* @Very basic & personal wage calculater to get some experience before the big projects!
+/* Very basic & personal wage calculater to get some experience before the big projects!
  * Assumptions:
- * 1a.Overtime- Unknown if the person works 5 or 6 days a week nor nightshifts only, Also special job that's not overpaid
+ * 1a.Overtime- Starts at the 7th hour (Business works 6 days+)
  * 1b.Overtime- Holidays are not calculated in
+ * 2.Bonus- Delivery bonuses,the only bonus available
  */
 public class WageCalc {
     public static void main(String[] args) { 
@@ -39,21 +40,26 @@ public class WageCalc {
         scan.close();   
     }
 
-    //result is first part the hourly total pay and second part is delivery bonus sum
+    /*
+     * Returns the shift's worth in NIS via seconds in the shift
+     * Takes an array with the shift's data
+     * @param data data that contains shift's starting time, ending time and number of deliveries
+     * @return the shift's worth in NIS as a double
+     * @see LocalDateTime 
+     * @see Duration
+     */
     private static double calculateShift(LocalDateTime[] data) {
-        final  int FRIDAY = 5;
-        final  int SATURDAY = 6;
-        final  double  SATURDAY_WAGE_MODIFIER = 1.5;
+        final int FRIDAY = 5;
+        final int SATURDAY = 6;
+        final double  SATURDAY_WAGE_MODIFIER = 1.5;
         
-        final int BEFORE_OVERTIME = 8 * 60;
-        final int FIRST_OVERTIME = 2 * 60; // first 2 hours of overtime
-        double wageModifier = 1;
-
-        double minutesInShift = 0;
-        double hoursInShift = 0;
+        long secondsInShift = 0;
+        final int OVERTIME_THRESHOLD = 60 * 60 * 7; //7 hours in seconds
+        final int TWO_HOURS_OVERTIME = 60 * 60 * 2;
+        
         double totalPay = 0;
         double regPayPerHour = 29.12;
-        double regPayPerMinute = regPayPerHour / 60;
+        double regPayPerSecond = regPayPerHour / 60 / 60;
         int regDelivery = 3;
         int deliveryInWeekend = 4;
 
@@ -69,53 +75,79 @@ public class WageCalc {
 
         if (shiftStart.getDayOfWeek().getValue() == FRIDAY) {
             Duration fridayFirstDuration = Duration.between(shiftStart,six);
-            double minutesUntilSix = (double)(fridayFirstDuration.toMinutes());
-            minutesInShift += minutesUntilSix;
-            totalPay += minutesUntilSix * regPayPerMinute;
+            long secondsUntilSix = fridayFirstDuration.toSeconds();
+            secondsInShift += secondsUntilSix;
+            totalPay += secondsUntilSix * regPayPerSecond;
 
             Duration fridaySecondDuration = Duration.between(six,shiftEnd);
-            double minutesPastSix = (double)(fridaySecondDuration.toMinutes());
-            minutesInShift += minutesPastSix;
+            double secondsPastSix = (double)(fridaySecondDuration.toSeconds());
+            secondsInShift += secondsPastSix;
 
-            //totalPay += minutesPastSix * regPayPerMinute * SATURDAY_WAGE_MODIFIER;
+            //totalPay += secondsPastSix * regPayPerMinute * SATURDAY_WAGE_MODIFIER;
             totalPay += deliveriesNum * deliveryInWeekend;
-            if (minutesInShift > BEFORE_OVERTIME) {
+            if (secondsInShift > OVERTIME_THRESHOLD) { // overtime activates
+                secondsInShift -= OVERTIME_THRESHOLD;
+                if (secondsInShift > TWO_HOURS_OVERTIME) { //2+ hours of overtime
+                    totalPay += TWO_HOURS_OVERTIME * regPayPerSecond * 1.75;
+                    secondsInShift -= TWO_HOURS_OVERTIME;
+                    totalPay += secondsInShift * regPayPerSecond * 2;            
+                }
+                else { //less than 2 hours of overtime
+                    totalPay += secondsInShift * regPayPerSecond * 1.75;  
+                }
 
+            }
+            else { //no overtime
+                totalPay += secondsPastSix * regPayPerSecond * SATURDAY_WAGE_MODIFIER;    
             }
         }
         else if (shiftStart.getDayOfWeek().getValue() == SATURDAY) {
             Duration saturdayFirstDuration = Duration.between(shiftStart,six);
-            double minutesUntilSix = (double)(saturdayFirstDuration.toMinutes());
-            totalPay += minutesUntilSix * regPayPerMinute * SATURDAY_WAGE_MODIFIER;
+            double secondsUntilSix = (double)(saturdayFirstDuration.toSeconds());
+            secondsInShift += secondsUntilSix;
+            totalPay += secondsUntilSix * regPayPerSecond * SATURDAY_WAGE_MODIFIER;
             Duration saturdaySecondDuration = Duration.between(six,shiftEnd);
-            double minutesFromSix = (double)(saturdaySecondDuration.toMinutes());
-            totalPay += minutesFromSix * regPayPerMinute;
+            double secondsPastSix = (double)(saturdaySecondDuration.toSeconds());
+            secondsInShift += secondsPastSix;
             totalPay += deliveriesNum * deliveryInWeekend;
+            if (secondsInShift > OVERTIME_THRESHOLD) { // overtime activates
+                secondsInShift -= OVERTIME_THRESHOLD;
+                if (secondsInShift > TWO_HOURS_OVERTIME) { //2+ hours of overtime
+                    totalPay += TWO_HOURS_OVERTIME * regPayPerSecond * 1.75;
+                    secondsInShift -= TWO_HOURS_OVERTIME;
+                    totalPay += secondsInShift * regPayPerSecond * 2;            
+                }
+                else { //less than 2 hours of overtime
+                    totalPay += secondsInShift * regPayPerSecond * 1.75;  
+                }
+            }
+            else { //no overtime
+                totalPay += secondsPastSix * regPayPerSecond * SATURDAY_WAGE_MODIFIER;    
+            }
         }
-        else {
+        else { //non weekend day
             Duration shiftDuration = Duration.between(shiftStart,shiftEnd);
-            double shiftMinutes = (double)(shiftDuration.toMinutes()); 
-            if (shiftMinutes > BEFORE_OVERTIME) {
-                totalPay += 8 * regPayPerHour;
-                hoursInShift = 8;
-                shiftMinutes -= BEFORE_OVERTIME;
-                if (shiftMinutes > 120) {
-                    totalPay += FIRST_OVERTIME * regPayPerMinute * 1.25;
-                    shiftMinutes -= 120;
-                    totalPay += shiftMinutes * regPayPerMinute * 1.50;
+            double shiftSeconds = (double)(shiftDuration.toSeconds()); 
+            if (shiftSeconds > OVERTIME_THRESHOLD) {
+                totalPay += 7 * regPayPerHour;
+                shiftSeconds -= OVERTIME_THRESHOLD;
+                if (shiftSeconds > TWO_HOURS_OVERTIME) {
+                    totalPay += TWO_HOURS_OVERTIME * regPayPerSecond * 1.25;
+                    shiftSeconds -= TWO_HOURS_OVERTIME;
+                    totalPay += shiftSeconds * regPayPerSecond * 1.50;
                 }
             else {
-                totalPay += shiftMinutes * regPayPerMinute * 1.25; 
+                totalPay += shiftSeconds * regPayPerSecond * 1.25; 
             } 
-
             }
-            totalPay += shiftMinutes * regPayPerMinute;
             totalPay += deliveriesNum * regDelivery;
         }
         System.out.println("For shift: "+shiftStart.toString()+" -> "+ shiftEnd.toString() + " +"+ data[2].getMinute() +" totalling - "+ totalPay + "NIS");
         return totalPay;
     }
-    // assumes the right format is put
+    /*
+     * Appends a shift to the end of the database in the logs folder
+     */
     private static void appendShift() {
         Scanner scan = new Scanner(System.in);
         System.out.println("Please enter a shift starting point in the format of '2022-06-03T17:00:00' (Y-M-D)");
@@ -141,6 +173,11 @@ public class WageCalc {
         System.out.println("End of appending");
         scan.close();
     }
+    /*
+     * Takes a log line and parses it into usable data
+     * @param log line to parse from
+     * @return an LocalDateTime array with 3 elements-Shiftstart, Shiftend, Delivery num
+     */
     private static LocalDateTime[] parseFromLine(String logLine) {
         LocalDateTime[] result = new LocalDateTime[3];
         LocalDateTime startingTime = LocalDateTime.parse(logLine.substring(0, 19));
@@ -151,6 +188,11 @@ public class WageCalc {
         result[2] = deliveryHelper;
         return result;
     }
+    /*
+     * Calculates a specific month's wage
+     * @param the month to calculate
+     * @return the amount of money made in that month
+     */
     private static double calcMonthlyWage(String monthToCalc) {
         double monthlyPay = 0;
         try {
